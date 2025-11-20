@@ -1,188 +1,117 @@
 // Arquivo: src/screens/App/HomeScreen/HomeScreen.tsx
 
 import React from 'react';
-import { TouchableOpacity, ScrollView, View } from 'react-native'; 
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useNavigation } from '@react-navigation/native';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { TouchableOpacity, ScrollView, View, Alert } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+// import { useAuth } from '../../../context/AuthContext';
 import * as S from './HomeScreen.styles';
 
-// Importar o hook do contexto
-import { useAuth } from '../../context/AuthContext';
+import { GamificationCard } from '../../components/GamificationCard';
+import { InfoCard } from '../../components/InfoCard';
 
 const HomeScreen = () => {
-  const navigation = useNavigation();
   const insets = useSafeAreaInsets();
   
-  const { signOut } = useAuth();
-
-  const [userName, setUserName] = React.useState('Carregando...');
-  const [userEmail, setUserEmail] = React.useState('Carregando...');
-  const [userPhone, setUserPhone] = React.useState('Carregando...');
-  const [isLoading, setIsLoading] = React.useState(true);
-
-  React.useEffect(() => {
-    fetchUserData();
-  }, []);
-
-  const fetchUserData = async () => {
-    try {
-      const token = await AsyncStorage.getItem('authToken');
-      const userId = await AsyncStorage.getItem('userId');
-      
-      if (!token || !userId) {
-        await signOut();
-        return;
-      }
-      const apiUrl = process.env.EXPO_PUBLIC_API_URL || '';
-      const response = await fetch(`${apiUrl}/clients/${userId}`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error(`Erro ${response.status}`);
-      }
-
-      const data = await response.json();
-      setUserName(data.name || `${data.firstName || ''} ${data.lastName || ''}`.trim() || 'Usuário');
-      setUserEmail(data.email || 'Email não disponível');
-      setUserPhone(formatPhone(data.phone) || 'Telefone não disponível');
-    } catch (err) {
-      console.error('Erro ao buscar dados:', err);
-      setUserName('Usuário');
-    } finally {
-      setIsLoading(false);
-    }
+  const userData = {
+    name: "Caio",
+    level: 7,
+    xpCurrent: 700,
+    xpNext: 1000,
+    avatarUrl: "https://i.pravatar.cc/150?img=12" 
   };
 
-  function onlyDigits(value?: string) {
-    if (!value) return '';
-    return value.replace(/\D/g, '');
-  }
-
-  function formatPhone(value?: string) {
-    if (!value) return '';
-    const digits = onlyDigits(value);
-    if (!digits) return '';
-    let d = digits;
-    if (d.length > 11 && d.startsWith('55')) {
-      d = d.slice(2);
-    }
-    if (d.length === 11) {
-      return `(${d.slice(0,2)}) ${d.slice(2,7)}-${d.slice(7)}`;
-    }
-    if (d.length === 10) {
-      return `(${d.slice(0,2)}) ${d.slice(2,6)}-${d.slice(6)}`;
-    }
-    if (d.length > 6) return `${d.slice(0, d.length-8)} ${d.slice(-8,-4)}-${d.slice(-4)}`;
-    return value;
-  }
-
-  const menuItems = [
-    { label: 'Home', icon: 'home' },
-    { label: 'Pontos', icon: 'map-marker' },
-  ];
-
-  const handleLogout = async () => {
-    try {
-      await signOut();
-    } catch (err) {
-      console.error('Logout error:', err);
-    }
-  };
-
-  const handleEditProfile = () => {
-    console.log('Editar perfil clicado'); 
-  };
-
-  const handleSearchCollectionCompanies = () => {
-    console.log('Pesquisar empresas clicado');
-  };
+  const handleNavigate = (screen: string) => console.log(`Navegar para ${screen}`);
 
   return (
     <S.Container>
-      <S.Header style={{ paddingTop: insets.top + 8 }}>
+      <S.Header style={{ paddingTop: insets.top + 10 }}>
         <S.HeaderTop>
-          <View style={{ width: 24 }} />
-          <S.HeaderTitle>Dashboard</S.HeaderTitle>
-          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-            <TouchableOpacity onPress={handleEditProfile} style={{ marginRight: 8 }}>
-              <MaterialCommunityIcons name="account-circle" size={28} color="white" />
-            </TouchableOpacity>
+          
+          <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+            <S.AvatarContainer onPress={() => handleNavigate('Profile')}>
+               {userData.avatarUrl ? (
+                 <S.AvatarImage source={{ uri: userData.avatarUrl }} />
+               ) : (
+                 <MaterialCommunityIcons name="account" size={32} color="#348e57" />
+               )}
+            </S.AvatarContainer>
             
-            <S.HeaderIconButton onPress={handleLogout} activeOpacity={0.7}>
-              <MaterialCommunityIcons name="logout" size={20} color="white" />
-            </S.HeaderIconButton>
+            <S.WelcomeContainer>
+              <S.HeaderTitle>Olá, {userData.name}!</S.HeaderTitle>
+              <S.HeaderSubtitle>
+                Vamos reciclar hoje?
+              </S.HeaderSubtitle>
+            </S.WelcomeContainer>
           </View>
+          <S.HeaderIconButton onPress={() => console.log('Notificações')}>
+            <MaterialCommunityIcons name="bell-outline" size={24} color="white" />
+          </S.HeaderIconButton>
+
         </S.HeaderTop>
       </S.Header>
 
       <ScrollView 
-        style={{ flex: 1 }}
-        scrollEnabled={true}
+        style={{ flex: 1, zIndex: 10 }} 
+        contentContainerStyle={{ paddingBottom: 5 }} 
         showsVerticalScrollIndicator={false}
+        overScrollMode="never"
       >
-        <S.WelcomeSection>
-          <S.WelcomeTitle>Bem-vindo, {userName}!</S.WelcomeTitle>
-          <S.WelcomeSubtitle>Gerencie seu descarte de eletrônicos</S.WelcomeSubtitle>
-        </S.WelcomeSection>
+        
+        <GamificationCard 
+          level={userData.level} 
+          currentXp={userData.xpCurrent} 
+          nextXp={userData.xpNext} 
+        />
 
-        <S.ProfileCard>
-          <S.ProfileHeader>
-            <S.ProfileTitle>Perfil</S.ProfileTitle>
-          </S.ProfileHeader>
+        <S.ActionsGrid>
+          <S.BigActionButton onPress={() => handleNavigate('Registrar')}>
+             <MaterialCommunityIcons name="plus-circle-outline" size={36} color="white" />
+             <S.BigActionText>REGISTRAR DESCARTE</S.BigActionText>
+          </S.BigActionButton>
 
-          <S.ProfileInfo>
-            <S.ProfileInfoLabel>Nome</S.ProfileInfoLabel>
-            <S.ProfileInfoValue>{userName}</S.ProfileInfoValue>
-          </S.ProfileInfo>
+          <S.SmallActionButton onPress={() => handleNavigate('Mapa')}>
+             <MaterialCommunityIcons name="map-search-outline" size={32} color="#348e57" />
+             <S.SmallActionText>Mapa Completo</S.SmallActionText>
+          </S.SmallActionButton>
 
-          <S.ProfileInfo>
-            <S.ProfileInfoLabel>Email</S.ProfileInfoLabel>
-            <S.ProfileInfoValue>{userEmail}</S.ProfileInfoValue>
-          </S.ProfileInfo>
+          <S.SmallActionButton onPress={() => handleNavigate('Denuncia')}>
+             <MaterialCommunityIcons name="alert-octagon-outline" size={32} color="#E74C3C" />
+             <S.SmallActionText>Denunciar</S.SmallActionText>
+          </S.SmallActionButton>
+        </S.ActionsGrid>
 
-          <S.ProfileInfo>
-            <S.ProfileInfoLabel>Telefone</S.ProfileInfoLabel>
-            <S.ProfileInfoValue>{userPhone}</S.ProfileInfoValue>
-          </S.ProfileInfo>
-        </S.ProfileCard>
 
-        <S.ActionButtonsContainer>
-          <S.ActionButton onPress={handleSearchCollectionCompanies}>
-            <MaterialCommunityIcons name="map-search" size={20} color="white" />
-            <S.ActionButtonText>Pesquisar Empresas de Coleta</S.ActionButtonText>
-          </S.ActionButton>
-        </S.ActionButtonsContainer>
+        <S.TipsSection>
+          <S.SectionTitle>Dicas Rápidas</S.SectionTitle>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ paddingBottom: 20 }}>
+            <InfoCard icon="battery-alert" iconColor="#FF8A65" title="Baterias" description="Nunca jogue no lixo comum. Risco de fogo." />
+            <InfoCard icon="monitor" iconColor="#4DB6AC" title="Monitores" description="Contêm metais pesados. Doe ou recicle." />
+            <InfoCard icon="cellphone" iconColor="#9575CD" title="Celulares" description="Apague seus dados antes de descartar." />
+             <View style={{ width: 20 }} />
+          </ScrollView>
+        </S.TipsSection>
 
-        <View style={{ height: 20 }} />
       </ScrollView>
 
-      <S.BottomNav style={{ paddingBottom: insets.bottom }}>
-        {menuItems.map((item, index) => (
-          <TouchableOpacity 
-            key={index} 
-            style={{ 
-              flex: 1, 
-              alignItems: 'center', 
-              justifyContent: 'center',
-              paddingVertical: 8
-            }}
-          >
-            <MaterialCommunityIcons 
-              name={item.icon as any} 
-              size={26} 
-              color="#348e57" 
-            />
-            <S.BottomNavLabel>{item.label}</S.BottomNavLabel>
-          </TouchableOpacity>
-        ))}
+      {/* === BOTTOM NAV === */}
+      <S.BottomNav style={{ paddingBottom: insets.bottom + 10 }}>
+        <S.BottomNavButton onPress={() => console.log('Home')}>
+          <MaterialCommunityIcons name="home" size={28} color="#348e57" />
+          <S.BottomNavLabel active>Home</S.BottomNavLabel>
+        </S.BottomNavButton>
+
+        <S.BottomNavButton onPress={() => console.log('Pontos')}>
+          <MaterialCommunityIcons name="map-marker-radius" size={28} color="#ccc" />
+          <S.BottomNavLabel>Pontos</S.BottomNavLabel>
+        </S.BottomNavButton>
+
+        <S.BottomNavButton onPress={() => console.log('Perfil')}>
+          <MaterialCommunityIcons name="account-circle" size={28} color="#ccc" />
+          <S.BottomNavLabel>Perfil</S.BottomNavLabel>
+        </S.BottomNavButton>
       </S.BottomNav>
+
     </S.Container>
   );
 };
