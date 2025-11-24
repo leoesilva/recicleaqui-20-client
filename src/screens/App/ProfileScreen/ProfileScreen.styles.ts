@@ -1,0 +1,110 @@
+// Arquivo: src/screens/App/ProfileScreen/ProfileScreen.styles.ts
+
+import styled from 'styled-components/native';
+import { PRIMARY_COLOR } from '../../Auth/LoginScreen/LoginScreen.styles';
+
+export const Container = styled.View`
+  flex: 1;
+  background-color: #f5f7fa;
+`;
+
+export const HeaderBackground = styled.View`
+  height: 140px;
+  background-color: ${PRIMARY_COLOR};
+  border-bottom-left-radius: 30px;
+  border-bottom-right-radius: 30px;
+  align-items: center;
+  justify-content: center;
+`;
+
+export const HeaderTitle = styled.Text`
+  color: white;
+  font-size: 20px;
+  font-family: 'Montserrat-Bold';
+  margin-bottom: 20px;
+`;
+
+export const BackButton = styled.TouchableOpacity`
+  position: absolute;
+  top: 50px; /* Ajuste conforme a StatusBar */
+  left: 20px;
+  z-index: 10;
+  padding: 8px;
+  background-color: rgba(255, 255, 255, 0.2); /* Fundo semi-transparente para contraste */
+  border-radius: 12px;
+`;
+
+export const ContentContainer = styled.ScrollView`
+  flex: 1;
+  margin-top: -50px; /* Sobe por cima do header */
+  padding-horizontal: 20px;
+`;
+
+export const AvatarWrapper = styled.View`
+  align-self: center;
+  margin-bottom: 20px;
+  position: relative; /* Para posicionar o ícone de câmera */
+`;
+
+export const AvatarImage = styled.Image`
+  width: 120px;
+  height: 120px;
+  border-radius: 60px;
+  border-width: 4px;
+  border-color: white;
+  background-color: #e1e1e1;
+`;
+
+export const EditIconContainer = styled.TouchableOpacity`
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  background-color: ${PRIMARY_COLOR};
+  width: 36px;
+  height: 36px;
+  border-radius: 18px;
+  justify-content: center;
+  align-items: center;
+  border-width: 3px;
+  border-color: white;
+  elevation: 4;
+`;
+
+export const FormCard = styled.View`
+  background-color: white;
+  border-radius: 20px;
+  padding: 20px;
+  shadow-color: #000;
+  shadow-offset: 0px 2px;
+  shadow-opacity: 0.05;
+  shadow-radius: 8px;
+  elevation: 3;
+  margin-bottom: 20px;
+`;
+
+export const SectionTitle = styled.Text`
+  font-size: 16px;
+  font-family: 'Montserrat-Bold';
+  color: #333;
+  margin-bottom: 15px;
+  margin-left: 5px;
+`;
+
+export const LogoutButton = styled.TouchableOpacity`
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  padding: 15px;
+  border-radius: 12px;
+  border-width: 1px;
+  border-color: #fee;
+  background-color: #fff5f5;
+  margin-bottom: 40px;
+`;
+
+export const LogoutText = styled.Text`
+  color: #E74C3C;
+  font-family: 'Montserrat-Bold';
+  font-size: 14px;
+  margin-left: 8px;
+`;

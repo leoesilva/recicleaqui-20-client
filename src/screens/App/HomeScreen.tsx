@@ -4,6 +4,7 @@ import React from 'react';
 import { TouchableOpacity, ScrollView, View, Alert } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
 // import { useAuth } from '../../../context/AuthContext';
 import * as S from './HomeScreen.styles';
 
@@ -12,6 +13,7 @@ import { InfoCard } from '../../components/InfoCard';
 
 const HomeScreen = () => {
   const insets = useSafeAreaInsets();
+  const navigation = useNavigation<any>(); 
   
   const userData = {
     name: "Caio",
@@ -21,7 +23,16 @@ const HomeScreen = () => {
     avatarUrl: "https://i.pravatar.cc/150?img=12" 
   };
 
-  const handleNavigate = (screen: string) => console.log(`Navegar para ${screen}`);
+  const handleNavigate = (screen: string) => {
+    console.log(`LOG: Navegar para ${screen}`); 
+    
+    if (screen === 'Profile') {
+      // ESTA É A LINHA QUE FALTAVA:
+      navigation.navigate('Profile'); 
+    } else {
+      console.log(`Funcionalidade ${screen} ainda não implementada`);
+    }
+  };
 
   return (
     <S.Container>
@@ -106,7 +117,7 @@ const HomeScreen = () => {
           <S.BottomNavLabel>Pontos</S.BottomNavLabel>
         </S.BottomNavButton>
 
-        <S.BottomNavButton onPress={() => console.log('Perfil')}>
+        <S.BottomNavButton onPress={() => handleNavigate('Profile')}>
           <MaterialCommunityIcons name="account-circle" size={28} color="#ccc" />
           <S.BottomNavLabel>Perfil</S.BottomNavLabel>
         </S.BottomNavButton>
