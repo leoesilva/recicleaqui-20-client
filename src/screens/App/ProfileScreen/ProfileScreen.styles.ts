@@ -15,6 +15,7 @@ export const HeaderBackground = styled.View`
   border-bottom-right-radius: 30px;
   align-items: center;
   justify-content: center;
+  z-index: 0;
 `;
 
 export const HeaderTitle = styled.Text`
@@ -24,26 +25,17 @@ export const HeaderTitle = styled.Text`
   margin-bottom: 20px;
 `;
 
-export const BackButton = styled.TouchableOpacity`
-  position: absolute;
-  top: 50px; 
-  left: 20px;
-  z-index: 10;
-  padding: 8px;
-  background-color: rgba(255, 255, 255, 0.2); 
-  border-radius: 12px;
-`;
-
 export const ContentContainer = styled.ScrollView`
   flex: 1;
-  margin-top: -50px; 
+  margin-top: -50px;
   padding-horizontal: 20px;
+  z-index: 1;
 `;
 
 export const AvatarWrapper = styled.View`
   align-self: center;
   margin-bottom: 20px;
-  position: relative; 
+  position: relative;
 `;
 
 export const AvatarImage = styled.Image`
@@ -107,4 +99,27 @@ export const LogoutText = styled.Text`
   font-family: 'Montserrat-Bold';
   font-size: 14px;
   margin-left: 8px;
+`;
+
+export const BackButton = styled.TouchableOpacity`
+  position: absolute;
+  top: 50px;
+  left: 20px;
+  z-index: 10;
+  padding: 8px;
+  background-color: rgba(255, 255, 255, 0.2);
+  border-radius: 12px;
+`;
+
+export const Row = styled.View`
+  flex-direction: row;
+  gap: 10px;
+`;
+
+interface ColProps {
+  flex?: number;
+}
+
+export const Col = styled.View<ColProps>`
+  flex: ${(props: ColProps) => props.flex || 1};
 `;
