@@ -2,8 +2,7 @@
 
 import styled from 'styled-components/native';
 
-// Defina a cor diretamente aqui para evitar dependências quebradas
-const PRIMARY_COLOR = '#348e57';
+import { COLORS } from '../../../constants/colors';
 
 export const Container = styled.View`
   flex: 1;
@@ -13,7 +12,7 @@ export const Container = styled.View`
 export const Header = styled.View`
   padding: 20px;
   padding-top: 60px;
-  background-color: ${PRIMARY_COLOR};
+  background-color: ${COLORS.primary};
   border-bottom-left-radius: 30px;
   border-bottom-right-radius: 30px;
   margin-bottom: 20px;
@@ -68,7 +67,7 @@ export const SelectionCard = styled.TouchableOpacity<SelectionCardProps>`
   shadow-radius: 4px;
 
   /* CORRIGIDO: Tipagem explícita */
-  border-color: ${(props: SelectionCardProps) => (props.selected ? (props.color || PRIMARY_COLOR) : 'transparent')};
+  border-color: ${(props: SelectionCardProps) => (props.selected ? (props.color || COLORS.primary) : 'transparent')};
 `;
 
 interface IconContainerProps {
@@ -128,7 +127,7 @@ export const PointCard = styled.TouchableOpacity`
   border-radius: 12px;
   margin-bottom: 10px;
   border-left-width: 5px;
-  border-left-color: ${PRIMARY_COLOR};
+  border-left-color: ${COLORS.primary};
   elevation: 2;
 `;
 
@@ -157,7 +156,7 @@ export const PointDistance = styled.View`
 export const DistanceText = styled.Text`
   font-size: 12px;
   font-family: 'Montserrat-Bold';
-  color: ${PRIMARY_COLOR};
+  color: ${COLORS.primary};
 `;
 
 export const BackButton = styled.TouchableOpacity`

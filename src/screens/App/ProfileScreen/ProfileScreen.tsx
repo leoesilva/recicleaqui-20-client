@@ -9,6 +9,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { useAuth } from '../../../context/AuthContext';
 import { Button, TextInput } from '../../../components';
+import { ClientProfileResponse } from '../../../types/Client';
+import { COLORS } from '../../../constants/colors';
 import * as S from './ProfileScreen.styles';
 
 // --- HELPERS DE MÁSCARA ---
@@ -50,26 +52,28 @@ const ProfileScreen = () => {
   
   const [permissionStatus, requestPermission] = ImagePicker.useMediaLibraryPermissions();
   
+  // --- ESTADOS DE CONTROLE ---
   const [clientType, setClientType] = useState<'individual' | 'company' | null>(null);
   const [clientId, setClientId] = useState<number | null>(null);
-  
-  // Dados Pessoa Física
+  const [addressId, setAddressId] = useState<number | null>(null);
+
+  // --- ESTADOS DO PERFIL ---
+  // Pessoa Física
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [cpf, setCpf] = useState('');
   
-  // Dados Pessoa Jurídica
+  // Pessoa Jurídica
   const [companyName, setCompanyName] = useState('');
   const [tradeName, setTradeName] = useState('');
   const [cnpj, setCnpj] = useState('');
   
-  // Dados Comuns
+  // Comuns
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
   const [avatarUri, setAvatarUri] = useState<string | null>(null);
 
-  // Endereço
-  const [addressId, setAddressId] = useState<number | null>(null);
+  // --- ESTADOS DO ENDEREÇO ---
   const [postalCode, setPostalCode] = useState('');
   const [addressType, setAddressType] = useState('');
   const [addressName, setAddressName] = useState(''); 
@@ -79,10 +83,11 @@ const ProfileScreen = () => {
   const [state, setState] = useState('');
   const [complement, setComplement] = useState('');
 
+  // --- ESTADOS DE SEGURANÇA ---
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmNewPassword, setConfirmNewPassword] = useState('');
-  
+  const [passwordStrength, setPasswordStrength] = useState(0);
 
   const [isProfileLoading, setIsProfileLoading] = useState(false);
   const [isPasswordLoading, setIsPasswordLoading] = useState(false);
@@ -91,6 +96,38 @@ const ProfileScreen = () => {
   const [showNewPass, setShowNewPass] = useState(false);
   const [showConfirmPass, setShowConfirmPass] = useState(false);
 
+  // Lógica de Força de Senha
+  useEffect(() => {
+    const checkStrength = (pass: string) => {
+      if (!pass) return 0;
+      const hasLength = pass.length >= 8;
+      const hasUpper = /[A-Z]/.test(pass);
+      const hasNumber = /[0-9]/.test(pass);
+      const hasSpecial = /[^A-Za-z0-9]/.test(pass);
+
+      if (!hasLength || !hasUpper || !hasNumber) return 1;
+      let score = 2;
+      if (hasSpecial) score += 1;
+      if (pass.length > 10 && hasSpecial) score += 1;
+      return score;
+    };
+    setPasswordStrength(checkStrength(newPassword));
+  }, [newPassword]);
+
+  const getStrengthColor = () => {
+    if (passwordStrength <= 1) return '#ff4444';
+    if (passwordStrength === 2) return '#ffbb33';
+    if (passwordStrength === 3) return '#00C851';
+    return '#007E33';
+  };
+
+  const getStrengthLabel = () => {
+    if (passwordStrength === 0) return '';
+    if (passwordStrength <= 1) return 'Fraca';
+    if (passwordStrength === 2) return 'Média';
+    if (passwordStrength === 3) return 'Forte';
+    return 'Muito Forte';
+  };
 
   useEffect(() => {
     loadUserData();
@@ -101,7 +138,8 @@ const ProfileScreen = () => {
       const token = await AsyncStorage.getItem('authToken');
       if (!token) return;
 
-      const apiUrl = process.env.EXPO_PUBLIC_API_URL || '';
+      // Usa a URL do ambiente ou fallback
+      const apiUrl = process.env.EXPO_PUBLIC_API_URL || 'https://berta-journalish-outlandishly.ngrok-free.dev/api/v1';
       
       const response = await fetch(`${apiUrl}/clients/me`, {
         method: 'GET',
@@ -114,16 +152,18 @@ const ProfileScreen = () => {
       if (response.ok) {
         const data = await response.json();
         
+        // Preenche IDs e Tipos
         setClientId(data.id);
         setClientType(data.type);
-        setEmail(data.user?.email || '');
-        setPhone(data.phone || '');
         
+        // Dados comuns
+        setEmail(data.user?.email || '');
+        setPhone(formatPhone(data.phone || ''));
         if (data.avatarUrl) {
           setAvatarUri(data.avatarUrl);
         }
         
-        // Dados específicos por tipo
+        // Dados específicos por tipo (Individual vs Company)
         if (data.type === 'individual' && data.individual) {
           setFirstName(data.individual.firstName || '');
           setLastName(data.individual.lastName || '');
@@ -146,9 +186,9 @@ const ProfileScreen = () => {
           setState(data.address.state || '');
           setComplement(data.address.additionalInfo || '');
         }
-        
-        // Formata o telefone
-        setPhone(formatPhone(data.phone || ''));
+      } else {
+        if (response.status === 404) return; // Usuário novo
+        throw new Error(`Erro ${response.status}`);
       }
     } catch (error) {
       console.error("Erro ao carregar dados do perfil:", error);
@@ -185,14 +225,15 @@ const ProfileScreen = () => {
     setIsProfileLoading(true);
     try {
       const token = await AsyncStorage.getItem('authToken');
+      // Verificações de segurança antes de enviar
       if (!token || !clientId || !clientType) {
         Alert.alert("Erro", "Dados de autenticação não encontrados.");
         return;
       }
 
-      const apiUrl = process.env.EXPO_PUBLIC_API_URL || '';
+      const apiUrl = process.env.EXPO_PUBLIC_API_URL || 'https://berta-journalish-outlandishly.ngrok-free.dev/api/v1';
       
-      // Monta o payload e endpoint com base no tipo de cliente
+      // Monta o payload com base no tipo de cliente
       let payload: any = {
         phone: onlyDigits(phone),
         address: {
@@ -230,11 +271,12 @@ const ProfileScreen = () => {
 
       if (response.ok) {
         Alert.alert("Sucesso", "Dados atualizados com sucesso!");
-        await loadUserData(); // Recarrega os dados
+        await loadUserData(); // Recarrega para garantir sincronia
       } else {
         const errorData = await response.json();
         Alert.alert("Erro", errorData.message || "Não foi possível atualizar o perfil.");
       }
+
     } catch (error) {
       console.error("Erro ao atualizar perfil:", error);
       Alert.alert("Erro", "Não foi possível atualizar o perfil.");
@@ -244,44 +286,46 @@ const ProfileScreen = () => {
   };
 
   const handleChangePassword = async () => {
-    // Validações Locais
     if (!currentPassword || !newPassword || !confirmNewPassword) {
       Alert.alert("Atenção", "Preencha todos os campos de senha.");
       return;
     }
 
-    if (newPassword.length < 6) {
-      Alert.alert("Atenção", "A nova senha deve ter pelo menos 6 caracteres.");
-      return;
+    if (passwordStrength < 2) {
+       Alert.alert("Senha Fraca", "A nova senha deve ter no mínimo 8 caracteres, uma letra maiúscula e um número.");
+       return;
     }
 
     if (newPassword !== confirmNewPassword) {
-      Alert.alert("Erro", "A nova senha e a confirmação não conferem.");
+      Alert.alert("Erro", "As senhas não conferem.");
       return;
     }
 
     setIsPasswordLoading(true);
     try {
+      // Simulação de delay (substituir por chamada real POST /auth/change-password)
       await new Promise(resolve => setTimeout(resolve, 1500));
-      // Lógica: POST /auth/change-password
       
       Alert.alert("Sucesso", "Senha alterada com sucesso!");
-      
-      setCurrentPassword('');
-      setNewPassword('');
-      setConfirmNewPassword('');
+      setCurrentPassword(''); setNewPassword(''); setConfirmNewPassword('');
     } catch (error) {
-      Alert.alert("Erro", "Senha atual incorreta ou falha no servidor.");
+      Alert.alert("Erro", "Falha ao alterar senha.");
     } finally {
       setIsPasswordLoading(false);
     }
   };
 
+  const handleLogout = () => {
+    Alert.alert("Sair", "Deseja realmente sair?", [
+      { text: "Cancelar", style: "cancel" },
+      { text: "Sair", onPress: signOut, style: "destructive" }
+    ]);
+  };
 
   return (
     <S.Container>
       <S.BackButton onPress={() => navigation.goBack()}>
-        <MaterialCommunityIcons name="arrow-left" size={24} color="white" />
+        <MaterialCommunityIcons name="arrow-left" size={24} color={COLORS.white} />
       </S.BackButton>
 
       <S.HeaderBackground>
@@ -295,119 +339,106 @@ const ProfileScreen = () => {
             source={avatarUri ? { uri: avatarUri } : require('../../../../assets/images/avatar.png')} 
           />
           <S.EditIconContainer onPress={handlePickImage} activeOpacity={0.8}>
-            <MaterialCommunityIcons name="camera" size={20} color="white" />
+            <MaterialCommunityIcons name="camera" size={20} color={COLORS.white} />
           </S.EditIconContainer>
         </S.AvatarWrapper>
 
+        {/* DADOS PESSOAIS / EMPRESA */}
         <S.FormCard>
           <S.SectionTitle>
-            {clientType === 'individual' ? 'Dados Pessoais' : 'Dados da Empresa'}
+            {clientType === 'company' ? 'Dados da Empresa' : 'Dados Pessoais'}
           </S.SectionTitle>
           
-          {clientType === 'individual' ? (
-            <>
-              <TextInput 
-                placeholder="Nome" 
-                value={firstName} 
-                onChangeText={setFirstName} 
-                rightIcon={<MaterialCommunityIcons name="account-outline" size={20} color="#ccc" />}
-              />
-              
-              <TextInput 
-                placeholder="Sobrenome" 
-                value={lastName} 
-                onChangeText={setLastName} 
-              />
-
-              <TextInput 
-                placeholder="CPF" 
-                value={cpf} 
-                editable={false}
-                style={{ opacity: 0.6, backgroundColor: '#f0f0f0' }}
-                rightIcon={<MaterialCommunityIcons name="card-account-details-outline" size={20} color="#ccc" />}
-              />
-            </>
+          {/* Renderização Condicional baseada no tipo de cliente */}
+          {clientType === 'company' ? (
+             <>
+               <TextInput 
+                 placeholder="Nome Fantasia" 
+                 value={tradeName} 
+                 onChangeText={setTradeName} 
+                 rightIcon={<MaterialCommunityIcons name="office-building" size={20} color={COLORS.gray} />}
+               />
+               <TextInput 
+                 placeholder="Razão Social" 
+                 value={companyName} 
+                 onChangeText={setCompanyName} 
+               />
+               <TextInput 
+                 placeholder="CNPJ" 
+                 value={cnpj} 
+                 editable={false} 
+                 style={{ opacity: 0.6, backgroundColor: '#f0f0f0' }} 
+                 rightIcon={<MaterialCommunityIcons name="card-account-details-outline" size={20} color={COLORS.gray} />} 
+               />
+             </>
           ) : (
-            <>
-              <TextInput 
-                placeholder="Nome Fantasia" 
-                value={tradeName} 
-                onChangeText={setTradeName} 
-                rightIcon={<MaterialCommunityIcons name="office-building" size={20} color="#ccc" />}
-              />
-              
-              <TextInput 
-                placeholder="Razão Social" 
-                value={companyName} 
-                onChangeText={setCompanyName} 
-              />
-
-              <TextInput 
-                placeholder="CNPJ" 
-                value={cnpj} 
-                editable={false}
-                style={{ opacity: 0.6, backgroundColor: '#f0f0f0' }}
-                rightIcon={<MaterialCommunityIcons name="card-account-details-outline" size={20} color="#ccc" />}
-              />
-            </>
+             <>
+               <TextInput 
+                 placeholder="Nome" 
+                 value={firstName} 
+                 onChangeText={setFirstName} 
+                 rightIcon={<MaterialCommunityIcons name="account-outline" size={20} color={COLORS.gray} />}
+               />
+               <TextInput 
+                 placeholder="Sobrenome" 
+                 value={lastName} 
+                 onChangeText={setLastName} 
+               />
+               <TextInput 
+                 placeholder="CPF" 
+                 value={cpf} 
+                 editable={false} 
+                 style={{ opacity: 0.6, backgroundColor: '#f0f0f0' }} 
+                 rightIcon={<MaterialCommunityIcons name="card-account-details-outline" size={20} color={COLORS.gray} />} 
+               />
+             </>
           )}
-
+          
           <TextInput 
             placeholder="E-mail" 
             value={email} 
-            editable={false}
-            style={{ opacity: 0.6, backgroundColor: '#f0f0f0' }}
-            rightIcon={<MaterialCommunityIcons name="email-outline" size={20} color="#ccc" />}
+            editable={false} 
+            style={{ opacity: 0.6, backgroundColor: '#f0f0f0' }} 
+            rightIcon={<MaterialCommunityIcons name="email-outline" size={20} color={COLORS.gray} />} 
           />
-
+          
           <TextInput 
             placeholder="Telefone" 
             value={phone} 
-            onChangeText={(text) => setPhone(formatPhone(text))} 
-            keyboardType="phone-pad"
+            onChangeText={(t) => setPhone(formatPhone(t))} 
+            keyboardType="phone-pad" 
             maxLength={15}
-            rightIcon={<MaterialCommunityIcons name="phone-outline" size={20} color="#ccc" />}
+            rightIcon={<MaterialCommunityIcons name="phone-outline" size={20} color={COLORS.gray} />} 
           />
         </S.FormCard>
 
+        {/* ENDEREÇO */}
         <S.FormCard>
           <S.SectionTitle>Endereço de Coleta</S.SectionTitle>
-          
           <TextInput 
             placeholder="CEP" 
             value={postalCode} 
-            onChangeText={(text) => setPostalCode(formatCEP(text))} 
-            keyboardType="numeric"
+            onChangeText={(t) => setPostalCode(formatCEP(t))} 
+            keyboardType="numeric" 
             maxLength={9}
-            rightIcon={<MaterialCommunityIcons name="map-marker-radius-outline" size={20} color="#ccc" />}
+            rightIcon={<MaterialCommunityIcons name="map-marker-radius-outline" size={20} color={COLORS.gray} />} 
           />
-
           <S.Row>
-            <S.Col flex={3}>
-              <TextInput placeholder="Rua" value={addressName} onChangeText={setAddressName} />
-            </S.Col>
-            <S.Col flex={1}>
-              <TextInput placeholder="Nº" value={number} onChangeText={setNumber} />
-            </S.Col>
+            <S.Col flex={3}><TextInput placeholder="Rua" value={addressName} onChangeText={setAddressName} /></S.Col>
+            <S.Col flex={1}><TextInput placeholder="Nº" value={number} onChangeText={setNumber} /></S.Col>
           </S.Row>
-
           <TextInput placeholder="Bairro" value={neighborhood} onChangeText={setNeighborhood} />
-          <TextInput placeholder="Complemento (Opcional)" value={complement} onChangeText={setComplement} />
-
+          <TextInput placeholder="Complemento" value={complement} onChangeText={setComplement} />
           <S.Row>
-            <S.Col flex={3}>
-              <TextInput placeholder="Cidade" value={city} onChangeText={setCity} />
-            </S.Col>
-            <S.Col flex={1}>
-              <TextInput placeholder="UF" value={state} onChangeText={setState} maxLength={2} autoCapitalize="characters" />
-            </S.Col>
+            <S.Col flex={3}><TextInput placeholder="Cidade" value={city} onChangeText={setCity} /></S.Col>
+            <S.Col flex={1}><TextInput placeholder="UF" value={state} onChangeText={setState} maxLength={2} autoCapitalize="characters" /></S.Col>
           </S.Row>
-
           <View style={{ marginTop: 15 }}>
             <Button title="SALVAR DADOS" onPress={handleSaveProfile} isLoading={isProfileLoading} />
           </View>
         </S.FormCard>
 
+        {/* SEGURANÇA */}
         <S.FormCard>
           <S.SectionTitle>Alterar Senha</S.SectionTitle>
           
@@ -416,37 +447,49 @@ const ProfileScreen = () => {
             value={currentPassword} 
             onChangeText={setCurrentPassword} 
             secureTextEntry={!showCurrentPass}
-            rightIcon={<MaterialCommunityIcons name={showCurrentPass ? "eye-off" : "eye"} size={20} color="#ccc" />}
+            rightIcon={<MaterialCommunityIcons name={showCurrentPass ? "eye-off" : "eye"} size={20} color={COLORS.gray} />}
             onRightPress={() => setShowCurrentPass(!showCurrentPass)}
           />
 
+          <S.HelperText>Mínimo 8 caracteres, 1 maiúscula e 1 número.</S.HelperText>
+          
           <TextInput 
             placeholder="Nova Senha" 
             value={newPassword} 
             onChangeText={setNewPassword} 
             secureTextEntry={!showNewPass}
-            rightIcon={<MaterialCommunityIcons name={showNewPass ? "eye-off" : "eye"} size={20} color="#ccc" />}
+            rightIcon={<MaterialCommunityIcons name={showNewPass ? "eye-off" : "eye"} size={20} color={COLORS.gray} />}
             onRightPress={() => setShowNewPass(!showNewPass)}
           />
 
+          {/* Barra de Força */}
+          {newPassword.length > 0 && (
+              <S.StrengthContainer>
+                <S.StrengthBarContainer>
+                  <S.StrengthBarFill width={`${(passwordStrength / 4) * 100}%`} color={getStrengthColor()} />
+                </S.StrengthBarContainer>
+                <S.StrengthLabel color={getStrengthColor()}>{getStrengthLabel()}</S.StrengthLabel>
+              </S.StrengthContainer>
+          )}
+
           <TextInput 
-            placeholder="Confirmar Nova Senha" 
+            placeholder="Confirmar Nova" 
             value={confirmNewPassword} 
             onChangeText={setConfirmNewPassword} 
             secureTextEntry={!showConfirmPass}
-            rightIcon={<MaterialCommunityIcons name={showConfirmPass ? "eye-off" : "eye"} size={20} color="#ccc" />}
+            rightIcon={<MaterialCommunityIcons name={showConfirmPass ? "eye-off" : "eye"} size={20} color={COLORS.gray} />}
             onRightPress={() => setShowConfirmPass(!showConfirmPass)}
           />
 
           <View style={{ marginTop: 15 }}>
-            <Button 
-              title="ATUALIZAR SENHA" 
-              onPress={handleChangePassword} 
-              isLoading={isPasswordLoading} 
-              style={{ backgroundColor: '#555' }} 
-            />
+            <Button title="ATUALIZAR SENHA" onPress={handleChangePassword} isLoading={isPasswordLoading} />
           </View>
         </S.FormCard>
+
+        <S.LogoutButton onPress={handleLogout}>
+          <MaterialCommunityIcons name="logout" size={20} color={COLORS.error} />
+          <S.LogoutText>Sair da Conta</S.LogoutText>
+        </S.LogoutButton>
 
         <View style={{ height: 20 }} />
       </S.ContentContainer>

@@ -4,24 +4,21 @@ import styled from 'styled-components/native';
 import { Dimensions } from 'react-native';
 import Svg from 'react-native-svg';
 import { MaterialCommunityIcons as Icon } from '@expo/vector-icons';
+import { COLORS } from '../../../constants/colors';
 
 export const { width } = Dimensions.get('window');
-
-// --- CONSTANTES DE ESTILO ---
-export const PRIMARY_COLOR = '#348e57';
-export const BACKGROUND_COLOR = '#f7f7f7';
 
 // --- COMPONENTES ESTILIZADOS ---
 export const ScreenContainer = styled.View`
   flex: 1;
-  background-color: ${BACKGROUND_COLOR};
+  background-color: ${COLORS.background};
 `;
 
 export const HeaderContainer = styled.View`
   height: 250px;
   justify-content: center;
   align-items: center;
-  background-color: ${PRIMARY_COLOR};
+  background-color: ${COLORS.primary};
 `;
 
 export const StyledSvg = styled(Svg)`
@@ -97,7 +94,7 @@ export const ForgotPasswordButton = styled.TouchableOpacity`
 `;
 
 export const ForgotPasswordText = styled.Text`
-  color: ${PRIMARY_COLOR};
+  color: ${COLORS.primary};
   font-size: 14px;
   font-weight: 600;
 `;
@@ -116,7 +113,7 @@ export const RegisterText = styled.Text`
 
 export const RegisterLink = styled.Text`
   font-size: 15px;
-  color: ${PRIMARY_COLOR};
+  color: ${COLORS.primary};
   font-family: 'Montserrat-Bold';
   margin-left: 5px;
 `;

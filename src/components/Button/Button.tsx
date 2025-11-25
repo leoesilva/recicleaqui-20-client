@@ -3,20 +3,26 @@
 import React from 'react';
 import styled from 'styled-components/native';
 import { ActivityIndicator, TouchableOpacityProps } from 'react-native';
+import { COLORS } from '../../constants/colors';
 
-// Interface do Componente Button 
+type ButtonVariant = 'primary' | 'secondary';
+
 interface ButtonProps extends TouchableOpacityProps {
   title: string;
   isLoading?: boolean;
+  variant?: ButtonVariant; 
 }
 
-// --- Componentes Estilizados ---
-const ButtonContainer = styled.TouchableOpacity<TouchableOpacityProps>`
-  /* 2. SOLUÇÃO DO ERRO: 
-     Tipamos explicitamente o 'props' dentro da função de interpolação.
-     Isso diz ao TS: "Ei, esse props é do tipo TouchableOpacityProps!"
-  */
-  background-color: ${(props: TouchableOpacityProps) => (props.disabled ? '#cccccc' : '#348e57')};
+interface ContainerProps extends TouchableOpacityProps {
+  buttonVariant: ButtonVariant;
+}
+
+const ButtonContainer = styled.TouchableOpacity<ContainerProps>`
+  background-color: ${(props: ContainerProps) => {
+    if (props.disabled) return COLORS.secondary;
+    if (props.buttonVariant === 'secondary') return COLORS.secondary;
+    return COLORS.primary;
+  }};
   
   padding: 15px 30px;
   border-radius: 50px;
@@ -30,31 +36,29 @@ const ButtonContainer = styled.TouchableOpacity<TouchableOpacityProps>`
   shadow-opacity: 0.25;
   shadow-radius: 3.84px;
 
-  /* Tipamos aqui também para garantir */
-  opacity: ${(props: TouchableOpacityProps) => (props.disabled ? 0.6 : 1)};
+  opacity: ${(props: ContainerProps) => (props.disabled ? 0.9 : 1)};
 `;
 
 const ButtonText = styled.Text`
-  color: #FFFFFF;
+  color: ${COLORS.white}; /* Usando a constante global */
   font-size: 16px;
   font-weight: bold;
   text-transform: uppercase;
   font-family: 'Montserrat-Bold';
 `;
 
-// --- Componente Principal ---
-
-const Button = ({ title, isLoading = false, ...rest }: ButtonProps) => {
+const Button = ({ title, isLoading = false, variant = 'primary', ...rest }: ButtonProps) => {
   const isDisabled = rest.disabled || isLoading;
 
   return (
     <ButtonContainer 
       activeOpacity={0.8} 
+      buttonVariant={variant} 
       {...rest} 
       disabled={isDisabled}
     >
       {isLoading ? (
-        <ActivityIndicator size="small" color="#FFFFFF" />
+        <ActivityIndicator size="small" color={COLORS.white} />
       ) : (
         <ButtonText>{title}</ButtonText>
       )}

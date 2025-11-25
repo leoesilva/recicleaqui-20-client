@@ -1,7 +1,7 @@
 // Arquivo: src/screens/App/HomeScreen/HomeScreen.styles.ts
 
 import styled from 'styled-components/native';
-import { PRIMARY_COLOR } from '../../Auth/LoginScreen/LoginScreen.styles';
+import { COLORS } from '../../../constants/colors';
 
 export const Container = styled.View`
   flex: 1;
@@ -10,7 +10,7 @@ export const Container = styled.View`
 
 // ============= HEADER =============
 export const Header = styled.View`
-  background-color: ${PRIMARY_COLOR};
+  background-color: ${COLORS.primary};
   padding-top: 12px;
   padding-bottom: 40px;
   border-bottom-left-radius: 30px;
@@ -78,14 +78,14 @@ export const ActionContainer = styled.View`
 
 export const MainActionButton = styled.TouchableOpacity`
   width: 100%;
-  background-color: ${PRIMARY_COLOR};
+  background-color: ${COLORS.primary};
   padding: 20px;
   border-radius: 24px;
   flex-direction: row;
   align-items: center;
   justify-content: space-between;
   
-  shadow-color: ${PRIMARY_COLOR};
+  shadow-color: ${COLORS.primary};
   shadow-offset: 0px 10px;
   shadow-opacity: 0.4;
   shadow-radius: 15px;
