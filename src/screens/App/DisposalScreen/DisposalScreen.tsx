@@ -256,7 +256,6 @@ const DisposalScreen = () => {
               <S.DistanceText>{point.distance}</S.DistanceText>
             </S.PointDistance>
 
-            {/* --- NOVO: INDICADOR VISUAL DE CLIQUE --- */}
             <View style={{
               marginTop: 12,
               flexDirection: 'row',
@@ -267,8 +266,6 @@ const DisposalScreen = () => {
             }}>
               <MaterialCommunityIcons name="directions" size={18} color="#348e57" />
               <S.CardActionText>Traçar Rota</S.CardActionText>
-
-              {/* Uma setinha extra na direita para reforçar */}
               <MaterialCommunityIcons
                 name="chevron-right"
                 size={18}
