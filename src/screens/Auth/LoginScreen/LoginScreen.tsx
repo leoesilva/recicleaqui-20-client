@@ -1,49 +1,64 @@
 // Arquivo: src/screens/Auth/LoginScreen/LoginScreen.tsx
 
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { StatusBar, TouchableOpacity, View, Keyboard } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage'; 
 import { MaterialCommunityIcons as Icon } from '@expo/vector-icons'; 
+// CORREÇÃO 1: Importar Path do react-native-svg
+import { Path } from 'react-native-svg';
 
-// Importação do Hook de Autenticação
 import { useAuth } from '../../../context/AuthContext';
-
 import { Button, TextInput } from '../../../components'; 
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { AuthStackParamList } from '../../../navigation/AuthNavigator';
+
+// CORREÇÃO 2: Importar os tipos do arquivo separado (quebra o ciclo)
+import { AuthStackParamList } from '../../../navigation/types';
+
+import * as S from './LoginScreen.styles';
 
 type Props = NativeStackScreenProps<AuthStackParamList, 'Login'>;
 
-import * as S from './LoginScreen.styles';
-import { Path } from 'react-native-svg';
-
 const LoginScreen = ({ navigation }: Props) => {
   const { signIn } = useAuth();
+
   const [isPasswordVisible, setPasswordVisible] = useState(false);
   const [rememberMe, setRememberMe] = useState(false); 
+  
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  
   const [isLoading, setIsLoading] = useState(false);
   const [emailError, setEmailError] = useState('');
   const [passwordError, setPasswordError] = useState('');
   
+  // --- VALIDAÇÃO PROFISSIONAL ---
   const validateForm = () => {
     let isValid = true;
     setEmailError('');
     setPasswordError('');
     
-    if (!email.includes('@') || email.length < 5) {
-      setEmailError('Digite um e-mail válido');
+    // 1. Validação de E-mail (Regex padrão de mercado)
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!email) {
+      setEmailError('Por favor, digite seu e-mail.');
+      isValid = false;
+    } else if (!emailRegex.test(email)) {
+      setEmailError('Formato de e-mail inválido.');
       isValid = false;
     }
-    if (password.length < 6) {
-      setPasswordError('A senha deve ter no mínimo 6 caracteres');
+    
+    // 2. Validação de Senha (Apenas presença)
+    // NÃO validamos tamanho mínimo no Login para não bloquear usuários antigos
+    // se a política mudar. O backend que decida se está certo.
+    if (!password) {
+      setPasswordError('Por favor, digite sua senha.');
       isValid = false;
     }
+    
     return isValid;
   };
   
-  const handleLogin = async () => {
+  const handleLogin = useCallback(async () => {
     Keyboard.dismiss();
 
     if (!validateForm()) return;
@@ -51,9 +66,24 @@ const LoginScreen = ({ navigation }: Props) => {
     setIsLoading(true);
 
     try {
+      // Delay para feedback visual
       await new Promise(resolve => setTimeout(resolve, 1500));
-      const apiUrl = process.env.EXPO_PUBLIC_API_URL || '';
-      const res = await fetch(`${apiUrl}/auth/login`, {
+
+      // Pega URL do .env
+      const apiUrl = process.env.EXPO_PUBLIC_API_URL;
+      
+      // Tratamento caso a URL não esteja definida
+      if (!apiUrl) {
+        throw new Error('URL da API não configurada');
+      }
+
+      // Monta a URL (evitando barra dupla se tiver)
+      const baseUrl = apiUrl.endsWith('/') ? apiUrl.slice(0, -1) : apiUrl;
+      const fullUrl = `${baseUrl}/auth/login`;
+
+      console.log('Tentando login em:', fullUrl);
+
+      const res = await fetch(fullUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
@@ -63,13 +93,14 @@ const LoginScreen = ({ navigation }: Props) => {
 
       if (!res.ok) {
         setIsLoading(false);
-        const errorMessage = result?.message || result?.error || 'Erro desconhecido';
-
+        const errorMessage = result?.message || 'Erro desconhecido';
+        
         if (res.status === 404) {
-          setEmailError('E-mail não cadastrado.');
+          setEmailError('E-mail não encontrado.');
         } else if (res.status === 401) {
           setPasswordError('Senha incorreta.');
         } else {
+          // Erro genérico exibe na senha
           setPasswordError(errorMessage);
         }
         return;
@@ -82,11 +113,11 @@ const LoginScreen = ({ navigation }: Props) => {
         if (user && user.id) {
           await AsyncStorage.setItem('userId', String(user.id));
         }
+        // Contexto assume a navegação
         await signIn(token);
-        
       } else {
         setIsLoading(false);
-        setPasswordError('Erro: Token inválido recebido.');
+        setPasswordError('Erro: Token inválido.');
       }
 
     } catch (err) {
@@ -94,11 +125,7 @@ const LoginScreen = ({ navigation }: Props) => {
       setIsLoading(false);
       setPasswordError('Sem conexão com o servidor.'); 
     }
-  };
-
-  const handleNavigateToRegister = () => {
-    navigation.navigate('Register'); 
-  };
+  }, [email, password, signIn]);
 
   return (
     <S.ScreenContainer>
@@ -144,7 +171,11 @@ const LoginScreen = ({ navigation }: Props) => {
             error={passwordError}
           >
             <TouchableOpacity onPress={() => setPasswordVisible(prev => !prev)}>
-              <S.InputIcon name={isPasswordVisible ? 'eye-off' : 'eye'} size={24} color={passwordError ? '#ff4444' : '#888'} />
+              <S.InputIcon 
+                name={isPasswordVisible ? 'eye-off' : 'eye'} 
+                size={24} 
+                color={passwordError ? '#ff4444' : '#888'} 
+              />
             </TouchableOpacity>
           </TextInput>
           
@@ -157,6 +188,7 @@ const LoginScreen = ({ navigation }: Props) => {
               />
               <S.CheckboxLabel>Manter-me conectado</S.CheckboxLabel>
             </S.CheckboxContainer>
+            
             <S.ForgotPasswordButton onPress={() => navigation.navigate('ForgotPassword')}>
               <S.ForgotPasswordText>Esqueci a senha</S.ForgotPasswordText>
             </S.ForgotPasswordButton>
@@ -167,7 +199,7 @@ const LoginScreen = ({ navigation }: Props) => {
         
         <S.RegisterContainer>
           <S.RegisterText>Não tem uma conta?</S.RegisterText>
-          <TouchableOpacity onPress={handleNavigateToRegister}>
+          <TouchableOpacity onPress={() => navigation.navigate('Register')}>
             <S.RegisterLink>Cadastre-se</S.RegisterLink>
           </TouchableOpacity>
         </S.RegisterContainer>
