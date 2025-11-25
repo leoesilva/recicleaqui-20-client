@@ -106,6 +106,13 @@ export const CardDescription = styled.Text`
   flex-wrap: wrap;
 `;
 
+export const CardActionText = styled.Text`
+  color: #348e57; /* PRIMARY_COLOR */
+  margin-left: 6px;
+  font-size: 13px;
+  font-family: 'Montserrat-Bold';
+`;
+
 // --- FORMULÁRIO ---
 export const FormLabel = styled.Text`
   font-size: 14px;
@@ -115,8 +122,7 @@ export const FormLabel = styled.Text`
   margin-top: 10px;
 `;
 
-// --- LISTA DE PONTOS ---
-export const PointCard = styled.View`
+export const PointCard = styled.TouchableOpacity`
   background-color: white;
   padding: 15px;
   border-radius: 12px;
