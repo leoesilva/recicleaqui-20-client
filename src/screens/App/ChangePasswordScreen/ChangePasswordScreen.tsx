@@ -7,41 +7,32 @@ import { useNavigation } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from 'styled-components/native';
 
-import { Button, TextInput } from '../../../components';
+import { Button, TextInput, useToast } from '../../../components';
+import { validatePassword, validatePasswordMatch, calculatePasswordStrength, getPasswordStrengthLabel } from '../../../utils/validators';
 import * as S from './ChangePasswordScreen.styles';
 
 const ChangePasswordScreen = () => {
   const navigation = useNavigation();
   const theme = useTheme();
+  const { showToast } = useToast();
 
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmNewPassword, setConfirmNewPassword] = useState('');
   const [passwordStrength, setPasswordStrength] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
-  const [successVisible, setSuccessVisible] = useState(false);
-  const [errorVisible, setErrorVisible] = useState(false);
-  const [errorMessage, setErrorMessage] = useState('');
+  
+  // Field-level errors
+  const [currentPasswordError, setCurrentPasswordError] = useState('');
+  const [newPasswordError, setNewPasswordError] = useState('');
+  const [confirmPasswordError, setConfirmPasswordError] = useState('');
 
   const [showCurrentPass, setShowCurrentPass] = useState(false);
   const [showNewPass, setShowNewPass] = useState(false);
   const [showConfirmPass, setShowConfirmPass] = useState(false);
 
   useEffect(() => {
-    const checkStrength = (pass: string) => {
-      if (!pass) return 0;
-      const hasLength = pass.length >= 8;
-      const hasUpper = /[A-Z]/.test(pass);
-      const hasNumber = /[0-9]/.test(pass);
-      const hasSpecial = /[^A-Za-z0-9]/.test(pass);
-
-      if (!hasLength || !hasUpper || !hasNumber) return 1;
-      let score = 2;
-      if (hasSpecial) score += 1;
-      if (pass.length > 10 && hasSpecial) score += 1;
-      return score;
-    };
-    setPasswordStrength(checkStrength(newPassword));
+    setPasswordStrength(calculatePasswordStrength(newPassword));
   }, [newPassword]);
 
   const getStrengthColor = () => {
@@ -51,29 +42,27 @@ const ChangePasswordScreen = () => {
     return '#007E33';
   };
 
-  const getStrengthLabel = () => {
-    if (passwordStrength === 0) return '';
-    if (passwordStrength <= 1) return 'Fraca';
-    if (passwordStrength === 2) return 'Média';
-    if (passwordStrength === 3) return 'Forte';
-    return 'Muito Forte';
-  };
-
   const handleChangePassword = async () => {
-    // Validações de formulário
-    if (!currentPassword || !newPassword || !confirmNewPassword) {
-      setErrorMessage('Preencha todos os campos.');
-      setErrorVisible(true);
+    // Clear previous errors
+    setCurrentPasswordError('');
+    setNewPasswordError('');
+    setConfirmPasswordError('');
+    
+    // Validations
+    if (!currentPassword) {
+      setCurrentPasswordError('Informe a senha atual.');
       return;
     }
-    if (passwordStrength < 2) {
-      setErrorMessage('Senha fraca: mínimo 8 caracteres, 1 maiúscula e 1 número.');
-      setErrorVisible(true);
+    
+    const passwordValidation = validatePassword(newPassword, 2);
+    if (!passwordValidation.isValid) {
+      setNewPasswordError(passwordValidation.error);
       return;
     }
-    if (newPassword !== confirmNewPassword) {
-      setErrorMessage('As senhas não conferem.');
-      setErrorVisible(true);
+    
+    const matchValidation = validatePasswordMatch(newPassword, confirmNewPassword);
+    if (!matchValidation.isValid) {
+      setConfirmPasswordError(matchValidation.error);
       return;
     }
 
@@ -81,8 +70,8 @@ const ChangePasswordScreen = () => {
     try {
       const token = await AsyncStorage.getItem('authToken');
       if (!token) {
-        setErrorMessage('Sessão expirada. Faça login novamente.');
-        setErrorVisible(true);
+        showToast('error', 'Sessão expirada. Faça login novamente.');
+        setIsLoading(false);
         return;
       }
 
@@ -101,30 +90,29 @@ const ChangePasswordScreen = () => {
       const data: { message?: string } = await response.json().catch(() => ({} as any));
 
       if (!response.ok) {
-        // Mapeamento simples de erros
+        // Map error to appropriate field
         if (response.status === 400 || response.status === 401) {
-          setErrorMessage(data.message || 'Verifique a senha atual e tente novamente.');
+          const errorMsg = data.message || 'Verifique a senha atual e tente novamente.';
+          setCurrentPasswordError(errorMsg);
         } else if (response.status === 429) {
-          setErrorMessage('Muitas tentativas. Tente novamente em alguns minutos.');
+          showToast('error', 'Muitas tentativas. Tente novamente em alguns minutos.');
         } else {
-          setErrorMessage(data.message || 'Não foi possível alterar a senha.');
+          showToast('error', data.message || 'Não foi possível alterar a senha.');
         }
-        setErrorVisible(true);
+        setIsLoading(false);
         return;
       }
-        // Sucesso: mostra banner e navega de volta após breve intervalo
-        setSuccessVisible(true);
-        // Limpa campos sensíveis
-        setCurrentPassword('');
-        setNewPassword('');
-        setConfirmNewPassword('');
-        setTimeout(() => {
-          setSuccessVisible(false);
-          navigation.goBack();
-        }, 1800);
+      
+      // Success
+      showToast('success', 'Senha alterada com sucesso!');
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmNewPassword('');
+      setTimeout(() => {
+        navigation.goBack();
+      }, 1500);
     } catch (error: any) {
-      setErrorMessage(error?.message || 'Erro de conexão. Não foi possível alterar a senha.');
-      setErrorVisible(true);
+      showToast('error', error?.message || 'Erro de conexão.');
     } finally {
       setIsLoading(false);
     }
@@ -142,41 +130,17 @@ const ChangePasswordScreen = () => {
       </S.Header>
 
       <S.Content>
-        {errorVisible && (
-          <View style={{
-            backgroundColor: '#D93025',
-            borderRadius: 8,
-            paddingVertical: 10,
-            paddingHorizontal: 14,
-            marginBottom: 12,
-          }}>
-            <S.Description style={{ color: '#fff', marginBottom: 0 }}>
-              {errorMessage}
-            </S.Description>
-          </View>
-        )}
-          {successVisible && (
-            <View style={{
-              backgroundColor: '#1DB954',
-              borderRadius: 8,
-              paddingVertical: 10,
-              paddingHorizontal: 14,
-              marginBottom: 12,
-            }}>
-              <View>
-                <S.Description style={{ color: '#fff', marginBottom: 0 }}>
-                  Senha alterada com sucesso.
-                </S.Description>
-              </View>
-            </View>
-          )}
         <S.Description>
             Para sua segurança, escolha uma senha forte e não a compartilhe com ninguém.
         </S.Description>
 
         <S.FormCard>
           <TextInput 
-            placeholder="Senha Atual" value={currentPassword} onChangeText={setCurrentPassword} secureTextEntry={!showCurrentPass}
+            placeholder="Senha Atual" 
+            value={currentPassword} 
+            onChangeText={(t) => { setCurrentPassword(t); setCurrentPasswordError(''); }} 
+            secureTextEntry={!showCurrentPass}
+            error={currentPasswordError}
             rightIcon={<MaterialCommunityIcons name={showCurrentPass ? "eye-off" : "eye"} size={20} color={theme.colors.textLight} />}
             onRightPress={() => setShowCurrentPass(!showCurrentPass)}
           />
@@ -184,7 +148,11 @@ const ChangePasswordScreen = () => {
           <S.HelperText>Mínimo 8 caracteres, 1 maiúscula e 1 número.</S.HelperText>
           
           <TextInput 
-            placeholder="Nova Senha" value={newPassword} onChangeText={setNewPassword} secureTextEntry={!showNewPass}
+            placeholder="Nova Senha" 
+            value={newPassword} 
+            onChangeText={(t) => { setNewPassword(t); setNewPasswordError(''); }} 
+            secureTextEntry={!showNewPass}
+            error={newPasswordError}
             rightIcon={<MaterialCommunityIcons name={showNewPass ? "eye-off" : "eye"} size={20} color={theme.colors.textLight} />}
             onRightPress={() => setShowNewPass(!showNewPass)}
           />
@@ -194,12 +162,16 @@ const ChangePasswordScreen = () => {
                 <S.StrengthBarContainer>
                   <S.StrengthBarFill width={`${(passwordStrength / 4) * 100}%`} color={getStrengthColor()} />
                 </S.StrengthBarContainer>
-                <S.StrengthLabel color={getStrengthColor()}>{getStrengthLabel()}</S.StrengthLabel>
+                <S.StrengthLabel color={getStrengthColor()}>{getPasswordStrengthLabel(passwordStrength)}</S.StrengthLabel>
               </S.StrengthContainer>
           )}
 
           <TextInput 
-            placeholder="Confirmar Nova" value={confirmNewPassword} onChangeText={setConfirmNewPassword} secureTextEntry={!showConfirmPass}
+            placeholder="Confirmar Nova" 
+            value={confirmNewPassword} 
+            onChangeText={(t) => { setConfirmNewPassword(t); setConfirmPasswordError(''); }} 
+            secureTextEntry={!showConfirmPass}
+            error={confirmPasswordError}
             rightIcon={<MaterialCommunityIcons name={showConfirmPass ? "eye-off" : "eye"} size={20} color={theme.colors.textLight} />}
             onRightPress={() => setShowConfirmPass(!showConfirmPass)}
           />

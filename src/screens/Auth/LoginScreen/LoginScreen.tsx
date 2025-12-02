@@ -8,9 +8,10 @@ import { Path } from 'react-native-svg';
 import { useTheme } from 'styled-components/native'; // <-- Hook do Tema
 
 import { useAuth } from '../../../context/AuthContext';
-import { Button, TextInput } from '../../../components'; 
+import { Button, TextInput, useToast } from '../../../components'; 
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { AuthStackParamList } from '../../../navigation/types';
+import { validateEmail, validatePassword } from '../../../utils/validators';
 
 import * as S from './LoginScreen.styles';
 
@@ -19,7 +20,8 @@ const { width } = Dimensions.get('window');
 
 const LoginScreen = ({ navigation }: Props) => {
   const { signIn } = useAuth();
-  const theme = useTheme(); 
+  const theme = useTheme();
+  const { showToast } = useToast(); 
 
   const [isPasswordVisible, setPasswordVisible] = useState(false);
   const [rememberMe, setRememberMe] = useState(false); 
@@ -32,24 +34,20 @@ const LoginScreen = ({ navigation }: Props) => {
   const [passwordError, setPasswordError] = useState('');
   
   const validateForm = () => {
-    let isValid = true;
     setEmailError('');
     setPasswordError('');
     
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!email) {
-      setEmailError('Por favor, digite seu e-mail.');
-      isValid = false;
-    } else if (!emailRegex.test(email)) {
-      setEmailError('Formato de e-mail inválido.');
-      isValid = false;
+    const emailValidation = validateEmail(email);
+    const passwordValidation = validatePassword(password, 0); // No minimum strength for login
+    
+    if (!emailValidation.isValid) {
+      setEmailError(emailValidation.error);
+    }
+    if (!passwordValidation.isValid) {
+      setPasswordError(passwordValidation.error);
     }
     
-    if (!password) {
-      setPasswordError('Por favor, digite sua senha.');
-      isValid = false;
-    }
-    return isValid;
+    return emailValidation.isValid && passwordValidation.isValid;
   };
   
   const handleLogin = useCallback(async () => {
@@ -76,9 +74,15 @@ const LoginScreen = ({ navigation }: Props) => {
 
       if (!res.ok) {
         setIsLoading(false);
-        if (res.status === 404) setEmailError('E-mail não encontrado.');
-        else if (res.status === 401) setPasswordError('Senha incorreta.');
-        else setPasswordError(result?.message || 'Erro desconhecido');
+        if (res.status === 404) {
+          setEmailError('E-mail não encontrado.');
+        } else if (res.status === 401) {
+          setPasswordError('Senha incorreta.');
+        } else {
+          const msg = result?.message || 'Erro ao fazer login.';
+          setPasswordError(msg);
+          showToast('error', msg);
+        }
         return;
       }
 
@@ -98,7 +102,8 @@ const LoginScreen = ({ navigation }: Props) => {
     } catch (err) {
       console.error(err);
       setIsLoading(false);
-      setPasswordError('Sem conexão com o servidor.'); 
+      setPasswordError('Sem conexão com o servidor.');
+      showToast('error', 'Sem conexão com o servidor.');
     }
   }, [email, password, signIn]);
 

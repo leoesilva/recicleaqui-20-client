@@ -7,13 +7,15 @@ import { MaterialCommunityIcons as Icon } from '@expo/vector-icons';
 import { useTheme } from 'styled-components/native';
 
 import { AuthStackParamList } from '../../../navigation/types';
-import { Button, TextInput } from '../../../components';
+import { Button, TextInput, useToast } from '../../../components';
+import { validateEmail } from '../../../utils/validators';
 import * as S from './ForgotPasswordScreen.styles';
 
 type Props = NativeStackScreenProps<AuthStackParamList, 'ForgotPassword'>;
 
 const ForgotPasswordScreen = ({ navigation }: Props) => {
   const theme = useTheme();
+  const { showToast } = useToast();
   const [email, setEmail] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [emailError, setEmailError] = useState('');
@@ -21,10 +23,13 @@ const ForgotPasswordScreen = ({ navigation }: Props) => {
   const handleSendEmail = async () => {
     Keyboard.dismiss();
     setEmailError('');
-    if (!email || !email.includes('@') || email.length < 5) {
-      setEmailError('Digite um e-mail válido.');
+    
+    const validation = validateEmail(email);
+    if (!validation.isValid) {
+      setEmailError(validation.error);
       return;
     }
+    
     setIsLoading(true);
     try {
       const apiUrl = process.env.EXPO_PUBLIC_API_URL || '';
@@ -33,17 +38,21 @@ const ForgotPasswordScreen = ({ navigation }: Props) => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email }),
       });
+      
       if (!res.ok) {
         setIsLoading(false);
         const data = await res.json().catch(() => ({}));
-        setEmailError(data.message || 'Erro ao enviar e-mail.');
+        const errorMsg = data.message || 'Erro ao enviar e-mail.';
+        setEmailError(errorMsg);
         return;
       }
 
+      showToast('success', 'Código enviado para seu e-mail!');
       // Navega para a tela de verificação do código
       navigation.navigate('ResetPassword', { email });
     } catch (error) {
       setEmailError('Erro de conexão.');
+      showToast('error', 'Erro de conexão.');
     } finally {
       setIsLoading(false);
     }

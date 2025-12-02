@@ -6,13 +6,15 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useTheme } from 'styled-components/native';
 
 import { AuthStackParamList } from '../../../navigation/types';
-import { Button } from '../../../components';
+import { Button, useToast } from '../../../components';
+import { validateVerificationCode } from '../../../utils/validators';
 import * as S from '../ForgotPasswordScreen/ForgotPasswordScreen.styles';
 
 type Props = NativeStackScreenProps<AuthStackParamList, 'ResetPassword'>;
 
 const ResetPasswordScreen = ({ route, navigation }: Props) => {
   const theme = useTheme();
+  const { showToast } = useToast();
   const { email } = route.params;
 
   const [token, setToken] = useState('');
@@ -22,8 +24,10 @@ const ResetPasswordScreen = ({ route, navigation }: Props) => {
   const handleVerifyCode = async () => {
     Keyboard.dismiss();
     setError('');
-    if (!/^\d{6}$/.test(token)) {
-      setError('O código deve ter 6 números.');
+    
+    const validation = validateVerificationCode(token);
+    if (!validation.isValid) {
+      setError(validation.error);
       return;
     }
 
@@ -38,13 +42,17 @@ const ResetPasswordScreen = ({ route, navigation }: Props) => {
 
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setError(data.message || 'Código inválido ou expirado.');
+        const errorMsg = data.message || 'Código inválido ou expirado.';
+        setError(errorMsg);
         return;
       }
 
+      showToast('success', 'Código verificado!');
       navigation.navigate('ResetPasswordConfirm', { email, code: token });
     } catch (err: any) {
-      setError(err.message || 'Erro de conexão ao verificar o código.');
+      const errorMsg = err.message || 'Erro de conexão ao verificar o código.';
+      setError(errorMsg);
+      showToast('error', errorMsg);
     } finally {
       setIsLoading(false);
     }

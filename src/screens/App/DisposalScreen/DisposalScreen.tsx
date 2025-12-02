@@ -1,13 +1,14 @@
 // Arquivo: src/screens/App/DisposalScreen/DisposalScreen.tsx
 
 import React, { useState, useCallback, useEffect } from 'react';
-import { View, Alert, Linking, Platform, Keyboard } from 'react-native';
+import { View, Linking, Platform, Keyboard } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTheme } from 'styled-components/native';
 
-import { Button, TextInput } from '../../../components';
+import { Button, TextInput, useToast } from '../../../components';
+import { validateDescription } from '../../../utils/validators';
 import { COLORS } from '../../../constants/colors';
 import * as S from './DisposalScreen.styles';
 
@@ -15,7 +16,8 @@ type LineType = 'green' | 'brown' | 'blue' | 'white';
 
 const DisposalScreen = () => {
   const navigation = useNavigation<any>();
-  const theme = useTheme(); 
+  const theme = useTheme();
+  const { showToast } = useToast(); 
 
   const [step, setStep] = useState(1);
   
@@ -36,9 +38,6 @@ const DisposalScreen = () => {
     complement: '',
   });
   const [clientId, setClientId] = useState<string | null>(null);
-  const [successVisible, setSuccessVisible] = useState(false);
-  const [errorVisible, setErrorVisible] = useState(false);
-  const [errorMessage, setErrorMessage] = useState('');
   
   // --- NOVOS ESTADOS DE ERRO ---
   const [itemsError, setItemsError] = useState('');
@@ -92,9 +91,6 @@ const DisposalScreen = () => {
     setItemsError('');
     setAddressError('');
     setIsLoading(false);
-    setSuccessVisible(false);
-    setErrorVisible(false);
-    setErrorMessage('');
   };
 
   useFocusEffect(
@@ -226,29 +222,23 @@ const DisposalScreen = () => {
   const handleCreateRequest = async () => {
     setItemsError('');
     setAddressError('');
-    setErrorVisible(false);
-    setSuccessVisible(false);
 
-    if (!itemsDescription.trim()) {
-      setItemsError('Por favor, descreva os itens.');
-      setErrorMessage('Por favor, descreva os itens que serão descartados.');
-      setErrorVisible(true);
+    const descriptionValidation = validateDescription(itemsDescription, 'descrição dos itens', 10);
+    if (!descriptionValidation.isValid) {
+      setItemsError(descriptionValidation.error);
       return;
     }
 
     if (disposalMethod === 'pickup') {
       if (!addressData.street || !addressData.city) {
         setAddressError('Endereço incompleto. Verifique seu cadastro.');
-        setErrorMessage('Endereço de retirada incompleto. Atualize seu cadastro.');
-        setErrorVisible(true);
         return;
       }
     }
 
     if (disposalMethod === 'dropoff') {
       if (!selectedPointId) {
-        setErrorMessage('Selecione um ponto de coleta para continuar.');
-        setErrorVisible(true);
+        showToast('error', 'Selecione um ponto de coleta para continuar.');
         return;
       }
     }
@@ -294,21 +284,18 @@ const DisposalScreen = () => {
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
         const msg = data?.message || 'Falha ao registrar descarte. Tente novamente.';
-        setErrorMessage(msg);
-        setErrorVisible(true);
+        showToast('error', msg);
         setIsLoading(false);
         return;
       }
 
-      // Sucesso: mostra banner e volta
-      setSuccessVisible(true);
+      // Sucesso
+      showToast('success', 'Descarte registrado com sucesso!');
       setTimeout(() => {
-        setSuccessVisible(false);
         navigation.goBack();
-      }, 2000);
+      }, 1500);
     } catch (e: any) {
-      setErrorMessage(e?.message || 'Erro de conexão. Tente novamente.');
-      setErrorVisible(true);
+      showToast('error', e?.message || 'Erro de conexão. Tente novamente.');
     } finally {
       setIsLoading(false);
     }
@@ -364,19 +351,6 @@ const DisposalScreen = () => {
     <>
       <S.SectionTitle>Como deseja descartar?</S.SectionTitle>
 
-              {successVisible && (
-                <View style={{
-                  backgroundColor: '#1DB954',
-                  borderRadius: 8,
-                  paddingVertical: 10,
-                  paddingHorizontal: 14,
-                  marginBottom: 12,
-                }}>
-                  <S.DescriptionText style={{ color: '#fff', marginBottom: 0 }}>
-                    Solicitação criada com sucesso.
-                  </S.DescriptionText>
-                </View>
-              )}
       <S.SelectionCard 
         selected={disposalMethod === 'pickup'} 
         onPress={() => setDisposalMethod('pickup')}
@@ -521,32 +495,6 @@ const DisposalScreen = () => {
       </S.Header>
 
       <S.Content showsVerticalScrollIndicator={false}>
-        {errorVisible && (
-          <View style={{
-            backgroundColor: '#D93025',
-            borderRadius: 8,
-            paddingVertical: 10,
-            paddingHorizontal: 14,
-            marginBottom: 12,
-          }}>
-            <S.DescriptionText style={{ color: '#fff', marginBottom: 0 }}>
-              {errorMessage}
-            </S.DescriptionText>
-          </View>
-        )}
-        {successVisible && (
-          <View style={{
-            backgroundColor: '#1DB954',
-            borderRadius: 8,
-            paddingVertical: 10,
-            paddingHorizontal: 14,
-            marginBottom: 12,
-          }}>
-            <S.DescriptionText style={{ color: '#fff', marginBottom: 0 }}>
-              Solicitação criada com sucesso! Redirecionando...
-            </S.DescriptionText>
-          </View>
-        )}
         {step === 1 && renderStep1()}
         {step === 2 && renderStep2()}
         {step === 3 && disposalMethod === 'pickup' && renderPickupForm()}

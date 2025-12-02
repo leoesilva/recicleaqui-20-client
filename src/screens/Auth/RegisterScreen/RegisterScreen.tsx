@@ -1,48 +1,41 @@
 // Arquivo: src/screens/Auth/RegisterScreen/RegisterScreen.tsx
 
 import React, { useState, useEffect } from 'react';
-import { StatusBar, View, Alert, Keyboard, ActivityIndicator } from 'react-native';
+import { StatusBar, View, Keyboard, ActivityIndicator } from 'react-native';
 import { MaterialCommunityIcons as Icon } from '@expo/vector-icons';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 
-import { Button, TextInput } from '../../../components';
+import { Button, TextInput, useToast } from '../../../components';
 import { COLORS } from '../../../constants/colors';
 import * as S from './RegisterScreen.styles';
+import {
+  onlyDigits,
+  formatCPF,
+  formatCNPJ,
+  formatPhone,
+  formatCEP,
+  validateEmail,
+  validatePassword,
+  validatePasswordMatch,
+  validateCPF,
+  validateCNPJ,
+  validatePhone,
+  validateCEP,
+  validateUF,
+  validateName,
+  validateAddress,
+  validateAddressNumber,
+  validateCity,
+  calculatePasswordStrength,
+  getPasswordStrengthLabel,
+} from '../../../utils/validators';
 
-import { AuthStackParamList } from '../../../navigation/types'; // Garanta que esse import existe ou use 'any'
+import { AuthStackParamList } from '../../../navigation/types';
 
 type Props = NativeStackScreenProps<AuthStackParamList, 'Register'>;
 
-// --- HELPERS DE MÁSCARA ---
-const onlyDigits = (s: string) => s.replace(/\D/g, '');
-const formatCPF = (v: string) => {
-  let d = v.replace(/\D/g, "");
-  d = d.replace(/(\d{3})(\d)/, "$1.$2");
-  d = d.replace(/(\d{3})(\d)/, "$1.$2");
-  d = d.replace(/(\d{3})(\d{1,2})$/, "$1-$2");
-  return d;
-};
-const formatCNPJ = (v: string) => {
-  let d = v.replace(/\D/g, "");
-  d = d.replace(/^(\d{2})(\d)/, "$1.$2");
-  d = d.replace(/^(\d{2})\.(\d{3})(\d)/, "$1.$2.$3");
-  d = d.replace(/\.(\d{3})(\d)/, ".$1/$2");
-  d = d.replace(/(\d{4})(\d)/, "$1-$2");
-  return d;
-};
-const formatPhone = (v: string) => {
-  let d = v.replace(/\D/g, "");
-  d = d.replace(/^(\d{2})(\d)/g, "($1) $2");
-  d = d.replace(/(\d)(\d{4})$/, "$1-$2");
-  return d;
-};
-const formatCEP = (v: string) => {
-  let d = v.replace(/\D/g, "");
-  d = d.replace(/^(\d{5})(\d)/, "$1-$2");
-  return d;
-};
-
 const RegisterScreen = ({ navigation }: Props) => {
+  const { showToast } = useToast();
   const [step, setStep] = useState(1);
 
   // Step 1 - Credenciais
@@ -93,24 +86,8 @@ const RegisterScreen = ({ navigation }: Props) => {
   const [showPassword, setShowPassword] = useState(false);
 
   // Força da Senha
-  const checkPasswordStrength = (pass: string) => {
-    let score = 0;
-    if (!pass) return 0;
-    const hasLength = pass.length >= 8;
-    const hasUpper = /[A-Z]/.test(pass);
-    const hasNumber = /[0-9]/.test(pass);
-    const hasSpecial = /[^A-Za-z0-9]/.test(pass);
-
-    if (!hasLength || !hasUpper || !hasNumber) return 1;
-    
-    score = 2; 
-    if (hasSpecial) score += 1;
-    if (pass.length > 10 && hasSpecial) score += 1;
-    return score;
-  };
-
   useEffect(() => {
-    setPasswordStrength(checkPasswordStrength(password));
+    setPasswordStrength(calculatePasswordStrength(password));
   }, [password]);
 
   const handleClientTypeChange = (type: 'individual' | 'company') => {
@@ -126,45 +103,60 @@ const RegisterScreen = ({ navigation }: Props) => {
 
   // --- VALIDAÇÕES ---
   const validateStep1 = () => {
-    let isValid = true;
-    if (!email.includes('@') || email.length < 5) { setEmailError('Email inválido'); isValid = false; } else setEmailError('');
+    const emailValidation = validateEmail(email);
+    const passwordValidation = validatePassword(password, 2);
+    const matchValidation = validatePasswordMatch(password, confirmPassword);
     
-    if (password.length < 8) {
-       setPasswordError('Mínimo 8 caracteres');
-       isValid = false;
-    } else if (passwordStrength < 2) { 
-       setPasswordError('Adicione maiúsculas e números.'); 
-       isValid = false; 
-    } else { 
-       setPasswordError(''); 
-    }
+    if (!emailValidation.isValid) setEmailError(emailValidation.error);
+    else setEmailError('');
     
-    if (password !== confirmPassword) { setConfirmPasswordError('Senhas não conferem'); isValid = false; } else setConfirmPasswordError('');
-    return isValid;
+    if (!passwordValidation.isValid) setPasswordError(passwordValidation.error);
+    else setPasswordError('');
+    
+    if (!matchValidation.isValid) setConfirmPasswordError(matchValidation.error);
+    else setConfirmPasswordError('');
+    
+    return emailValidation.isValid && passwordValidation.isValid && matchValidation.isValid;
   };
 
   const validateStep2 = () => {
     let isValid = true;
     if (clientType === 'individual') {
-      if (!firstName) { setFirstNameError('Informe o nome'); isValid = false; } else setFirstNameError('');
-      if (!lastName) { setLastNameError('Informe o sobrenome'); isValid = false; } else setLastNameError('');
-      if (onlyDigits(cpf).length < 11) { setCpfError('CPF inválido'); isValid = false; } else setCpfError('');
+      const firstNameVal = validateName(firstName, 'nome');
+      const lastNameVal = validateName(lastName, 'sobrenome');
+      const cpfVal = validateCPF(cpf);
+      
+      if (!firstNameVal.isValid) { setFirstNameError(firstNameVal.error); isValid = false; } else setFirstNameError('');
+      if (!lastNameVal.isValid) { setLastNameError(lastNameVal.error); isValid = false; } else setLastNameError('');
+      if (!cpfVal.isValid) { setCpfError(cpfVal.error); isValid = false; } else setCpfError('');
     } else {
-      if (!companyName) { setCompanyNameError('Razão Social obrigatória'); isValid = false; } else setCompanyNameError('');
-      if (onlyDigits(cnpj).length < 14) { setCnpjError('CNPJ inválido'); isValid = false; } else setCnpjError('');
+      const companyNameVal = validateName(companyName, 'razão social');
+      const cnpjVal = validateCNPJ(cnpj);
+      
+      if (!companyNameVal.isValid) { setCompanyNameError(companyNameVal.error); isValid = false; } else setCompanyNameError('');
+      if (!cnpjVal.isValid) { setCnpjError(cnpjVal.error); isValid = false; } else setCnpjError('');
     }
-    if (onlyDigits(phone).length < 10) { setPhoneError('Telefone inválido'); isValid = false; } else setPhoneError('');
+    
+    const phoneVal = validatePhone(phone);
+    if (!phoneVal.isValid) { setPhoneError(phoneVal.error); isValid = false; } else setPhoneError('');
+    
     return isValid;
   };
 
   const validateStep3 = () => {
-    let isValid = true;
-    if (onlyDigits(postalCode).length !== 8) { setPostalCodeError('CEP inválido'); isValid = false; } else setPostalCodeError('');
-    if (!addressName) { setAddressNameError('Endereço obrigatório'); isValid = false; } else setAddressNameError('');
-    if (!number) { setNumberError('Nº obrigatório'); isValid = false; } else setNumberError('');
-    if (!city) { setCityError('Cidade obrigatória'); isValid = false; } else setCityError('');
-    if (!state) { setStateError('UF obrigatório'); isValid = false; } else setStateError('');
-    return isValid;
+    const cepVal = validateCEP(postalCode);
+    const addressVal = validateAddress(addressName);
+    const numberVal = validateAddressNumber(number);
+    const cityVal = validateCity(city);
+    const stateVal = validateUF(state);
+    
+    if (!cepVal.isValid) setPostalCodeError(cepVal.error); else setPostalCodeError('');
+    if (!addressVal.isValid) setAddressNameError(addressVal.error); else setAddressNameError('');
+    if (!numberVal.isValid) setNumberError(numberVal.error); else setNumberError('');
+    if (!cityVal.isValid) setCityError(cityVal.error); else setCityError('');
+    if (!stateVal.isValid) setStateError(stateVal.error); else setStateError('');
+    
+    return cepVal.isValid && addressVal.isValid && numberVal.isValid && cityVal.isValid && stateVal.isValid;
   };
 
   const getStrengthColor = () => {
@@ -264,19 +256,21 @@ const RegisterScreen = ({ navigation }: Props) => {
       if (!res.ok) {
         const data = await res.json().catch(() => null);
         const message = data?.message || data?.error || `Erro ${res.status}`;
-        Alert.alert('Erro no Cadastro', message);
+        showToast('error', message);
         setIsLoading(false); 
         return;
       }
+      
       setIsSuccess(true);
       setIsLoading(false);
+      showToast('success', 'Conta criada com sucesso!');
       setTimeout(() => {
         navigation.navigate('Login');
       }, 2000);
 
     } catch (err) {
       console.error(err);
-      Alert.alert('Erro', 'Falha de conexão.');
+      showToast('error', 'Falha de conexão.');
       setIsLoading(false);
     }
   };

@@ -4,38 +4,39 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useTheme } from 'styled-components/native';
 
 import { AuthStackParamList } from '../../../navigation/types';
-import { Button, TextInput } from '../../../components';
+import { Button, TextInput, useToast } from '../../../components';
+import { validatePassword, validatePasswordMatch } from '../../../utils/validators';
 import * as S from '../ForgotPasswordScreen/ForgotPasswordScreen.styles';
 
 type Props = NativeStackScreenProps<AuthStackParamList, 'ResetPasswordConfirm'>;
 
 const ResetPasswordConfirmScreen = ({ route, navigation }: Props) => {
   const theme = useTheme();
+  const { showToast } = useToast();
   const { email, code } = route.params;
 
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPass, setShowPass] = useState(false);
   const [showConfirmPass, setShowConfirmPass] = useState(false);
-  const [error, setError] = useState('');
+  const [newPasswordError, setNewPasswordError] = useState('');
+  const [confirmPasswordError, setConfirmPasswordError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
   const handleFinalReset = async () => {
     Keyboard.dismiss();
-    setError('');
+    setNewPasswordError('');
+    setConfirmPasswordError('');
 
-    if (newPassword.length < 8) {
-      setError('A senha deve ter no mínimo 8 caracteres.');
+    const passwordValidation = validatePassword(newPassword, 2);
+    const matchValidation = validatePasswordMatch(newPassword, confirmPassword);
+    
+    if (!passwordValidation.isValid) {
+      setNewPasswordError(passwordValidation.error);
       return;
     }
-    const hasUpperCase = /[A-Z]/.test(newPassword);
-    const hasNumber = /[0-9]/.test(newPassword);
-    if (!hasUpperCase || !hasNumber) {
-      setError('A senha deve conter pelo menos 1 letra maiúscula e 1 número.');
-      return;
-    }
-    if (newPassword !== confirmPassword) {
-      setError('As senhas não coincidem.');
+    if (!matchValidation.isValid) {
+      setConfirmPasswordError(matchValidation.error);
       return;
     }
 
@@ -50,13 +51,17 @@ const ResetPasswordConfirmScreen = ({ route, navigation }: Props) => {
 
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setError(data.message || 'Código inválido ou expirado.');
+        const errorMsg = data.message || 'Código inválido ou expirado.';
+        setNewPasswordError(errorMsg);
         return;
       }
 
+      showToast('success', 'Senha redefinida com sucesso!');
       navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
     } catch (err: any) {
-      setError(err.message || 'Erro de conexão.');
+      const errorMsg = err.message || 'Erro de conexão.';
+      setNewPasswordError(errorMsg);
+      showToast('error', errorMsg);
     } finally {
       setIsLoading(false);
     }
@@ -84,7 +89,8 @@ const ResetPasswordConfirmScreen = ({ route, navigation }: Props) => {
             placeholder="Nova Senha"
             secureTextEntry={!showPass}
             value={newPassword}
-            onChangeText={(t: string) => setNewPassword(t)}
+            onChangeText={(t: string) => { setNewPassword(t); setNewPasswordError(''); }}
+            error={newPasswordError}
             rightIcon={
               <S.InputIcon
                 name={showPass ? 'eye-off' : 'eye'}
@@ -99,7 +105,8 @@ const ResetPasswordConfirmScreen = ({ route, navigation }: Props) => {
             placeholder="Confirmar Senha"
             secureTextEntry={!showConfirmPass}
             value={confirmPassword}
-            onChangeText={(t: string) => setConfirmPassword(t)}
+            onChangeText={(t: string) => { setConfirmPassword(t); setConfirmPasswordError(''); }}
+            error={confirmPasswordError}
             rightIcon={
               <S.InputIcon
                 name={showConfirmPass ? 'eye-off' : 'eye'}
@@ -110,10 +117,8 @@ const ResetPasswordConfirmScreen = ({ route, navigation }: Props) => {
             }
           />
 
-          {error ? <S.ErrorMessage>{error}</S.ErrorMessage> : null}
-
           <S.ButtonContainer>
-            <Button title="ALTERAR SENHA" onPress={handleFinalReset} isLoading={isLoading} />
+            <Button title="REDEFINIR SENHA" onPress={handleFinalReset} isLoading={isLoading} />
           </S.ButtonContainer>
 
         </S.Card>
