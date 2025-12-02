@@ -5,6 +5,7 @@ import { StatusBar, View, ActivityIndicator } from 'react-native';
 import { useFonts } from 'expo-font';
 import { NavigationContainer } from '@react-navigation/native';
 import { ThemeProvider } from './src/context/ThemeContext';
+import { ToastProvider } from './src/components/Toast/Toast';
 
 // Importações dos Navegadores
 import AuthNavigator from './src/navigation/AuthNavigator';
@@ -49,7 +50,9 @@ export default function App() {
     <AuthProvider>
       <ThemeProvider>
         <StatusBar barStyle="light-content" /> 
-        <RootNavigation />
+        <ToastProvider>
+          <RootNavigation />
+        </ToastProvider>
       </ThemeProvider>
     </AuthProvider>
   );
