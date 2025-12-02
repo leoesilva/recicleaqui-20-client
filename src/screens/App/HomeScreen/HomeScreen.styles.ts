@@ -143,7 +143,7 @@ export const SectionTitle = styled.Text`
 // ============= HISTORY PREVIEW (compacto) =============
 export const HistoryPreviewCard = styled.View`
   margin: 12px 24px 0 24px;
-  background-color: ${(props: any) => props.theme.colors.white};
+  background-color: ${(props: any) => props.theme.colors.surface};
   border-radius: 24px;
   padding: 16px;
   shadow-color: ${(props: any) => props.theme.colors.primary};
@@ -184,14 +184,14 @@ export const HistoryItemRow = styled.View`
   align-items: center;
   padding: 12px 0;
   border-bottom-width: 0.5px;
-  border-bottom-color: rgba(0, 0, 0, 0.08);
+  border-bottom-color: ${(props: any) => props.theme.colors.border}33;
 `;
 
 export const HistoryItemIcon = styled.View`
   width: 34px;
   height: 34px;
   border-radius: 10px;
-  background-color: ${(props: any) => props.theme.colors.whiteTransparent};
+  background-color: ${(props: any) => props.theme.mode === 'dark' ? 'rgba(255, 255, 255, 0.05)' : 'rgba(52, 142, 87, 0.08)'};
   align-items: center;
   justify-content: center;
   margin-right: 12px;

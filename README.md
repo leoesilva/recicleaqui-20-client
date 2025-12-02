@@ -22,7 +22,6 @@ Aplicativo mobile para a plataforma RecicleAqui 2.0 - facilitando o descarte res
 - ✅ **Sistema de Linhas de Coleta** (Verde, Marrom, Azul, Branca) para diferentes tipos de eletrônicos
 - ✅ **Busca de Pontos de Coleta** por proximidade e materiais aceitos
 - ✅ **Histórico de Descartes** com filtros e estatísticas
-- ✅ **Sistema de Gamificação** com XP e conquistas
 - ✅ **Modo Claro/Escuro** com persistência de preferências
 - ✅ **Validações em Tempo Real** com feedback visual (toasts + erros inline)
 - ✅ **Upload de Avatar** com preview e persistência
