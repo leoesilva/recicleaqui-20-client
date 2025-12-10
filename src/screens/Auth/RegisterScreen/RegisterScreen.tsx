@@ -218,7 +218,6 @@ const RegisterScreen = ({ navigation }: Props) => {
         password,
         phone: onlyDigits(phone),
         address: {
-          addressType: 'Rua',
           addressName,
           number,
           additionalInfo: complement,
